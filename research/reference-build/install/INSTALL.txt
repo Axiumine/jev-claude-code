@@ -1,0 +1,69 @@
+JEV lean install - run every step in YOUR terminal, in order. Nothing here needs Claude to touch ~/.claude, ~/.config/jev or the key.
+REPO=<your clone>/research/reference-build   (source of truth, git)      INSTALLED=~/.claude/hooks/jev   (copy, sealed with doctor --seal)
+Only want the jev_triage MCP tool? Use QUICKSTART.md instead. This file is the full staged plan (brake, web tripwire, MCP).
+
+0. Clone:
+   git clone https://github.com/Axiumine/jev-claude-code && REPO="$PWD/jev-claude-code/research/reference-build"
+
+1. Read and test before trusting (HOME must NOT be under /tmp: the classifier treats /tmp as scratch):
+   cd $REPO && wc -l jev/lib/*.cjs jev/hooks/*.cjs jev/mcp/*.cjs        # ~1.3k lines; read jevlib.cjs, brake.cjs, webscreen.cjs
+   HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs        # expect: tests 194, pass 194
+   (cd shelf && HOME=/nonexistent-home/x node --test jev-gate.test.cjs)                 # expect: tests 28, pass 28 (shelved gate, not installed)
+
+2. Secret-leak guard. guard-patch.diff targets the author's own PreToolUse hook ~/.claude/hooks/no-secret-leak.cjs, which is NOT in this repo.
+   If you run a similar hook, port the idea: deny commands that name ~/.config/jev and any expansion of $OPENROUTER_API_KEY. Otherwise skip this step.
+   cd ~/.claude/hooks && cp -p no-secret-leak.cjs no-secret-leak.cjs.bak-jev && cp -p no-secret-leak.test.cjs no-secret-leak.test.cjs.bak-jev
+   patch no-secret-leak.cjs < $REPO/install/guard-patch.diff        # adds OPENROUTER_API_KEY and JEV_API_KEY to PROTECTED_VARS, plus a ~/.config/jev directory rule
+   python3 $REPO/install/guard-test-cases.py && node no-secret-leak.test.cjs              # expect: ALL PASS
+   (side effect: Claude can no longer put $OPENROUTER_API_KEY in a Bash command; live Jev calls during app development are yours to run)
+
+3. Install code and folders:
+   rm -rf ~/.claude/hooks/jev && mkdir -p ~/.claude/hooks/jev && cp -a $REPO/jev/. ~/.claude/hooks/jev/
+   mkdir -p ~/.config/jev ~/.local/state/jev && chmod 700 ~/.config/jev ~/.local/state/jev
+   cp $REPO/install/policy.example.json ~/.config/jev/policy.json && chmod 600 ~/.config/jev/policy.json
+   node $REPO/backtest/volume.cjs 21 --personal $HOME/code/personal,$HOME/code/oss   # what each choice of 'personal' would send to Jev (counts only)
+   $EDITOR ~/.config/jev/policy.json        # CLASSIFY your roots (see the note in the file); unclassified dirs are 'unknown' = no command egress
+   node ~/.claude/hooks/jev/doctor.cjs      # FAILs for key, hooks and deny rules are expected at this point
+
+4. Register hooks + deny rules (idempotent, backup written, everything else in settings.json untouched):
+   bash $REPO/install/merge-settings.sh             # dry run: read the diff
+   bash $REPO/install/merge-settings.sh --apply     # rollback: cp -p ~/.claude/settings.json.bak-jev-<timestamp> ~/.claude/settings.json
+   # in Claude Code: /hooks  -> PreToolUse Bash (+1), PostToolUse WebFetch|WebSearch (+1) and Bash (+7). Restart the session if they do not show.
+
+5. Skill + pointer:
+   mkdir -p ~/.claude/skills/typesafe-ai && cp $REPO/skill/typesafe-ai/SKILL.md $REPO/skill/typesafe-ai/LICENSE ~/.claude/skills/typesafe-ai/
+   sha256sum ~/.claude/skills/typesafe-ai/SKILL.md      # b5779472954c6992ded0dcf131125db2f20d21fabeb1521d603040e4b00776c0
+   append the first two bullets of $REPO/install/claude-md-block.txt to ~/.claude/CLAUDE.md BY HAND
+   # in Claude Code: /doctor (or /context) -> the typesafe-ai row must show its description, not just the name
+
+6. (day 0-3) Shadow the deterministic brake - no key needed. Canary (harmless: local bare remote):
+   C=$HOME/code/personal/jev-canary   # any dir inside a 'personal' root
+   mkdir -p $C && cd $C && git init -q -b main work && git init -q --bare remote.git && cd work && git commit -q --allow-empty -m init && git remote add origin ../remote.git && git push -q origin HEAD:main
+   # ask Claude, in $C/work: "run: git push --force origin HEAD:main"  -> it runs (shadow) and the log gets a would_deny row:
+   node ~/.claude/hooks/jev/report.cjs 1 --would
+
+7. (day 1) OpenRouter side, then the key (your terminal only):
+   - openrouter.ai/settings/keys: new key 'claude-code-jev', credit limit $5; openrouter.ai/settings/privacy: keep prompt/response logging OFF
+   - optional guardrail on that key: model allowlist typesafe/jev-1.13, ZDR, budget $0.25/day (openrouter.ai/docs/guides/features/guardrails)
+   read -rsp 'OpenRouter key: ' K; echo; ( umask 077; printf 'OPENROUTER_API_KEY=%s\n' "$K" > ~/.config/jev/.env ); unset K; chmod 600 ~/.config/jev/.env
+   node ~/.claude/hooks/jev/doctor.cjs --live        # all ok; copy 'response model=...' into policy.json as "expected_model"
+   node ~/.claude/hooks/jev/probe.cjs                # eyeball the table, then:
+   node ~/.claude/hooks/jev/probe.cjs --save-baseline
+   node ~/.claude/hooks/jev/doctor.cjs --seal        # record sha256 of the installed scripts; git -C $REPO add -A; commit
+
+8. (day 3-4) T1 review and enforce (core rules, subagents only):
+   node ~/.claude/hooks/jev/report.cjs 4 --would     # label every T1 row right/wrong; fix false positives in $REPO/jev/lib/shellclass.cjs + a test, re-copy, re-seal
+   # gate: no would_deny on a core rule id that was legitimate work. Then set  "mode": {"brake_t1": "enforce"}  in ~/.config/jev/policy.json
+   # and add the third bullet (brake) of claude-md-block.txt. Canary again from a SUBAGENT (main thread stays shadow by default): the deny text must appear; '! git push --force origin HEAD:main' typed by you must still work.
+
+9. (day 4-7) Web tripwire: hooks are async + policy 'log' (no latency). After 3-4 days: report; read the first ~20 flagged rows; add benign hosts to web_trusted_hosts;
+   if flagged share <= 1% and the flagged rows are genuine agent-directed text: set "webscreen": "warn" and run: bash $REPO/install/merge-settings.sh --web-sync --apply
+
+10. (day 14) T2 verdict: node ~/.claude/hooks/jev/report.cjs 14 --would ; per rule id enforce only with >= 20 labelled would_deny, precision >= 90%, 0 user-requested;
+    otherwise set "brake_t2": "off" (delete the Jev stage). The rest of the design does not depend on it.
+
+11. (day 14-35, optional) jev_triage trial: run the command in $REPO/install/mcp-add.txt, add the last bullet of claude-md-block.txt.
+    day 21: count calls (see the plan); fewer than one per week -> claude mcp remove jev --scope user.
+
+ROLLBACK: touch ~/.config/jev/OFF (instant, all hooks go silent)  |  cp -p settings backup back  |  rm -rf ~/.claude/hooks/jev ~/.config/jev ~/.claude/skills/typesafe-ai
+          claude mcp remove jev --scope user  |  restore no-secret-leak.cjs from its .bak-jev (or keep the OPENROUTER_API_KEY line: harmless)  |  revoke the OpenRouter key

@@ -1,0 +1,95 @@
+--- ~/.claude/hooks/no-secret-leak.cjs.orig
++++ ~/.claude/hooks/no-secret-leak.cjs
+@@ -9,7 +9,7 @@
+  * both leaks the value remotely and persists it on disk. This hook makes that
+  * class of command impossible instead of relying on discipline.
+  *
+- * Wired on: Bash, Read, Grep (see ~/.claude/settings.json).
++ * Wired on: Bash, Monitor, Read, Grep, NotebookEdit (see ~/.claude/settings.json).
+  * Fails closed: when a secret-bearing path appears in a shell command, only an
+  * explicit allowlist of metadata-only verbs is permitted.
+  */
+@@ -62,7 +62,9 @@
+ 	'ANTHROPIC_API_KEY',
+ 	'AWS_SECRET_ACCESS_KEY',
+ 	'GITHUB_TOKEN',
+-	'GH_TOKEN'
++	'GH_TOKEN',
++	'OPENROUTER_API_KEY',
++	'JEV_API_KEY'
+ ].join('|')
+ 
+ // Shell expansion of a protected variable: the shell substitutes the value before
+@@ -92,6 +94,20 @@
+ 
+ const SAFE_GIT_SUBCOMMANDS = new Set(['check-ignore', 'ls-files', 'status', 'check-attr', 'config'])
+ 
++// Directory holding the Jev OpenRouter key (~/.config/jev/.env). The filename checks
++// above miss globs (`.[a-z]*`, `.e*`), recursive readers (`grep -r`, `tar`, `find -exec`)
++// and commands that `cd` into the directory first, so naming the directory itself is
++// the trigger. A glob in the component after `.config/` counts as naming it, and so
++// does `.config` as a whole path, because a recursive read of it reaches the key too.
++const JEV_DIR = /(?:^|[\s'"`=:;,|&()<>/\\])\.config[/\\]+(?:\.[/\\]+)*(?:jev|[\w.-]*[*?[{][^\s/\\'"`;|&()<>]*)(?=$|[/\\\s'"`;:,|&()<>])/
++const JEV_PARENT = /(?:^|[\s'"`=:;,|&()<>/\\])\.config[/\\]*(?=$|[\s'"`;:,|&()<>])/
++
++// Once that directory is named, every segment of the command must be one of these.
++const JEV_SAFE_VERBS = new Set([...SAFE_VERBS, 'cd', 'pushd', 'popd', 'du'])
++
++// find actions that read or copy file content.
++const FIND_ACTION = /\s-(?:exec|execdir|ok|okdir|fprint0?|fprintf|fls)\b/
++
+ // Content readers and transmitters. Once a secret path appears anywhere in the
+ // command, any of these anywhere in it is fatal — this is what stops indirection
+ // such as `echo $(cat .env)` or `find . -name .env | xargs cat`.
+@@ -143,7 +159,29 @@
+ 	return verb === 'git' ? 'git ' + (words[i + 1] || '') : verb
+ }
+ 
++function namesJevDir(text) {
++	return JEV_DIR.test(text) || JEV_PARENT.test(text)
++}
++
++function checkJevDir(command) {
++	if (!namesJevDir(command)) return
++	// Whole command, not only the segment naming the directory: `cd ~/.config/jev && grep -r . .`
++	for (const segment of command.split(/\|\||&&|[;|\n]|\$\(|`|<\(|>\(/)) {
++		const verb = verbOf(segment).replace(/^[({!]+/, '')
++		if (!verb || (JEV_SAFE_VERBS.has(verb) && !FIND_ACTION.test(segment))) continue
++		deny(
++			'Blocked: the command names ~/.config/jev (the Jev OpenRouter key) or its parent ~/.config, and `' + verb +
++				'` could read file content from it into the transcript (API + plaintext ~/.claude/projects/). Only ' +
++				'metadata verbs (ls, stat, wc, md5sum, chmod, mkdir, cd, du) may appear in such a command. Jev key ' +
++				'debugging is for the user to run in their own terminal (node ~/.claude/hooks/jev/doctor.cjs). For other ' +
++				'files under ~/.config, use the Read tool on the exact file.'
++		)
++	}
++}
++
+ function checkBash(command) {
++	checkJevDir(command)
++
+ 	if (SHELL_EXPANSION.test(command) || (CODE_LOOKUP.test(command) && INLINE_EVAL.test(command))) {
+ 		deny(
+ 			'Blocked: this command expands a protected secret variable, which would print its value into the transcript ' +
+@@ -186,6 +224,12 @@
+ 
+ function checkPath(p, toolName) {
+ 	if (!p) return
++	if (namesJevDir(' ' + String(p))) {
++		deny(
++			'Blocked: ' + toolName + ' targets ~/.config/jev (the Jev OpenRouter key) or its parent ~/.config. ' +
++				'Its content would be placed in the transcript (API + plaintext ~/.claude/projects/).'
++		)
++	}
+ 	if (touchesSecretFile(' ' + String(p))) {
+ 		deny(
+ 			'Blocked: ' + toolName + ' targets a secret-bearing file. Reading it would place its content in the transcript ' +
+@@ -208,7 +252,7 @@
+ 	const input = payload.tool_input || {}
+ 
+ 	try {
+-		if (tool === 'Bash') checkBash(String(input.command || ''))
++		if (tool === 'Bash' || tool === 'Monitor') checkBash(String(input.command || ''))
+ 		else if (tool === 'Read' || tool === 'NotebookEdit') checkPath(input.file_path, tool)
+ 		else if (tool === 'Grep') {
+ 			checkPath(input.path, tool)

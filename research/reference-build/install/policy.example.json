@@ -1,0 +1,15 @@
+{
+  "_comment": "-> ~/.config/jev/policy.json (chmod 600, owned by you: a looser file is IGNORED and defaults apply). roots are compared by realpath. Anything not listed is 'unknown': no Jev egress, except public web-page text. Replace the example roots below with your own directories: everything you do not list stays unknown. Set expected_model to the value 'doctor --live' prints.",
+  "mode": { "brake_t1": "shadow", "brake_t2": "shadow", "webscreen": "log", "triage": "on" },
+  "t1_enforce": "core",
+  "t1_scope": "subagents",
+  "t2_enforce": [],
+  "roots": {
+    "personal": ["/home/you/code/personal"],
+    "client": ["/home/you/code/clients"]
+  },
+  "egress": { "personal": "full", "client": "off", "unknown": "off" },
+  "web_root_classes": ["personal", "unknown"],
+  "web_trusted_hosts": [],
+  "budget_usd_day": 0.5
+}

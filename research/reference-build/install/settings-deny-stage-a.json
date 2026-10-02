@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(~/.config/jev/**)",
+      "Edit(~/.config/jev/**)",
+      "Edit(~/.claude/hooks/**)",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/.claude/settings.local.json)",
+      "Edit(~/.local/state/jev/**)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh repo archive*)",
+      "Bash(git clean -fdx*)",
+      "Bash(git filter-branch*)",
+      "Bash(git reflog expire*)",
+      "Bash(terraform destroy*)",
+      "Bash(crontab -r*)",
+      "Bash(dd * of=/dev/*)",
+      "Bash(mkfs*)"
+    ]
+  }
+}

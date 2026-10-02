@@ -1,0 +1,267 @@
+<title>Jev in Claude Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column — verdict first, category grid, then a scannable catalog with expandable rows. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #151d27; --muted: #5b6878; --line: #d8dfe8;
+  --accent: #2c55c9; --accent-soft: #e4ebfb; --tick: #c9d3e0;
+  --good: #1d7549; --good-soft: #e1f2e8; --warn: #8f5d00; --warn-soft: #f8edd6; --bad: #a8261d; --bad-soft: #f9e2df;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --step--1: 0.8125rem; --step-0: 0.9375rem; --step-1: 1.125rem; --step-2: 1.5rem; --step-3: clamp(1.9rem, 4vw, 2.75rem);
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1319; --surface: #151c25; --ink: #e5eaf0; --muted: #98a5b4; --line: #27313d;
+  --accent: #8eabff; --accent-soft: #1b2640; --tick: #2f3a48;
+  --good: #63cf97; --good-soft: #15291f; --warn: #e2b25b; --warn-soft: #2d2412; --bad: #ff8b80; --bad-soft: #321816;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1319; --surface: #151c25; --ink: #e5eaf0; --muted: #98a5b4; --line: #27313d;
+  --accent: #8eabff; --accent-soft: #1b2640; --tick: #2f3a48;
+  --good: #63cf97; --good-soft: #15291f; --warn: #e2b25b; --warn-soft: #2d2412; --bad: #ff8b80; --bad-soft: #321816;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: var(--step-0); line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 40px 64px; display: grid; gap: 48px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: var(--step-2); font-weight: 600; }
+h3 { font-size: var(--step-1); font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font-family: var(--f-data); font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.lede { max-width: 68ch; color: var(--muted); font-size: var(--step-1); }
+header { display: grid; gap: 14px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--f-data); font-size: var(--step--1); color: var(--muted); }
+.stats b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+section { display: grid; gap: 18px; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.verdict p { color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-data); font-size: 0.75rem; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
+.pill.yes { background: var(--good-soft); color: var(--good); }
+.pill.situational { background: var(--warn-soft); color: var(--warn); }
+.pill.no { background: var(--bad-soft); color: var(--bad); }
+.pill.neutral { background: transparent; border-color: var(--line); color: var(--muted); }
+.pill.accent { background: var(--accent-soft); color: var(--accent); }
+.plan { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.stage { display: grid; grid-template-columns: 3.2rem 1fr; gap: 14px; padding-block: 14px; border-bottom: 1px solid var(--line); }
+.stage .k { font-family: var(--f-display); font-size: var(--step-2); font-weight: 700; color: var(--accent); line-height: 1; }
+.stage div { min-width: 0; display: grid; gap: 2px; }
+.stage .when { font-family: var(--f-data); font-size: var(--step--1); color: var(--muted); }
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.cat { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 8px; cursor: pointer; min-width: 0; }
+.cat:hover { border-color: var(--accent); }
+.cat .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cat .name { font-family: var(--f-data); font-weight: 500; }
+.cat .count { font-family: var(--f-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cat .best { font-size: var(--step--1); color: var(--muted); overflow-wrap: anywhere; }
+.cat .best b { color: var(--ink); font-weight: 500; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-family: var(--f-data); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.field input, .field select { font: inherit; font-size: var(--step--1); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; min-width: 0; }
+.field.grow { flex: 1 1 220px; }
+.check { display: flex; align-items: center; gap: 6px; font-size: var(--step--1); padding-bottom: 7px; }
+.summary-line { font-family: var(--f-data); font-size: var(--step--1); color: var(--muted); }
+.list { display: grid; border-top: 1px solid var(--line); }
+.row { border-bottom: 1px solid var(--line); }
+.row-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding-block: 12px; }
+.row-main { display: grid; gap: 4px; min-width: 0; }
+.row-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.row-title a { font-weight: 600; overflow-wrap: anywhere; }
+.row-what { color: var(--muted); font-size: var(--step--1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row-side { display: grid; justify-items: end; gap: 6px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.scorebox { display: flex; align-items: center; gap: 8px; font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.ladder { display: grid; grid-template-columns: repeat(10, 6px); gap: 2px; }
+.ladder i { height: 14px; border-radius: 1px; background: var(--tick); }
+.ladder i.on { background: var(--accent); }
+.ladder i.half { background: linear-gradient(to top, var(--accent) 50%, var(--tick) 50%); }
+.stars { font-family: var(--f-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
+.toggle { font: inherit; font-size: var(--step--1); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+.detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 24px; padding: 4px 0 18px; }
+.detail > div { min-width: 0; display: grid; gap: 4px; align-content: start; }
+.detail h4 { margin: 0; font-family: var(--f-data); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.detail ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.detail p, .detail li { font-size: var(--step--1); overflow-wrap: anywhere; }
+.detail .wide { grid-column: 1 / -1; }
+.more { justify-self: center; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 18px; cursor: pointer; }
+.empty { padding: 24px 0; color: var(--muted); }
+footer { color: var(--muted); font-size: var(--step--1); display: grid; gap: 8px; max-width: 80ch; }
+@media (max-width: 560px) { .row-head { grid-template-columns: 1fr; } .row-side { justify-items: start; grid-auto-flow: column; justify-content: start; align-items: center; } }
+@media (prefers-reduced-motion: no-preference) { .cat, .toggle, .more { transition: border-color .15s ease; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Research report · <span id="gen"></span></span>
+    <h1>Jev in Claude Code</h1>
+    <p class="lede">Which community integrations of TypeSafe's Jev decision model are worth using for daily coding in Claude Code with OpenRouter as the provider, and how to make Claude use Jev without being asked.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section aria-labelledby="v-h">
+    <h2 id="v-h">Verdict</h2>
+    <div class="verdicts">
+      <article class="verdict">
+        <span class="pill yes">worth it</span>
+        <h3>When Claude writes app code</h3>
+        <p>Jev launched after Claude's training data. The official typesafe-ai skill, pinned and loaded by description, makes Claude reach for Jev on its own whenever a feature needs a fast typed decision (routing, triage, moderation, gating), with a pinned model, a none option, a short timeout and a fallback.</p>
+      </article>
+      <article class="verdict">
+        <span class="pill no">mostly not</span>
+        <h3>For Claude Code's own decisions</h3>
+        <p>In bypass-permission sessions there are no prompts to auto-approve. Jev scores below Opus on code judgment (about 72% on vulnerable-code checks, overconfident, moved by injected text) and every call sends commands or code to a third party. The protection that matters is deterministic and needs no Jev.</p>
+      </article>
+      <article class="verdict">
+        <span class="pill no">none from the community</span>
+        <h3>MCP servers, one or several</h3>
+        <p>MCP tools run at the model's discretion (one published bench: 0 of 150 unprompted calls), so they are not automatic. Several servers add overlapping verbs, key-handling risk and silent egress, not use. At most one small self-hosted server with a single triage tool, as a three-week trial.</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="p-h">
+    <h2 id="p-h">Recommended rollout</h2>
+    <div class="plan">
+      <div class="stage"><span class="k">A</span><div><strong>Knowledge and hardening</strong><span class="when">now · no key · no egress</span><p>Vendor the official typesafe-ai skill at a pinned commit, add a two-line pointer to CLAUDE.md, protect OPENROUTER_API_KEY in the secret-leak hook, add deny rules for the key directory and hook files.</p></div></div>
+      <div class="stage"><span class="k">B</span><div><strong>Deterministic Bash brake</strong><span class="when">days 0–4 · no key · no Jev</span><p>A deny-only PreToolUse hook for irreversible commands (force pushes, history rewrites, repo deletion), shadow mode first, enforced per rule and for unattended subagents first. Try plain permission deny rules before code.</p></div></div>
+      <div class="stage"><span class="k">C</span><div><strong>Prompt-injection tripwire</strong><span class="when">days 1–7 · needs key · personal repos only</span><p>An async PostToolUse check of fetched web text with two Noul questions, warn-only, local pre-filter first, ZDR routing forced, $5 capped key.</p></div></div>
+      <div class="stage"><span class="k">D</span><div><strong>Only if the logs show a need</strong><span class="when">day 14+ · shadow first</span><p>A Jev veto for the ~2% gray-zone Bash commands, and one self-hosted jev_triage MCP tool for bulk relevance triage. Delete either if it does not earn its place by day 30.</p></div></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="c-h">
+    <h2 id="c-h">Categories</h2>
+    <p class="lede" style="font-size:var(--step-0)">Each category was judged after its leaders were fact-checked against their source. Select a category to filter the catalog.</p>
+    <div class="cats" id="cats"></div>
+  </section>
+
+  <section aria-labelledby="k-h" id="catalog">
+    <h2 id="k-h">Catalog</h2>
+    <div class="filters" role="search">
+      <div class="field grow"><label for="q">Search</label><input id="q" type="search" placeholder="name, capability, pro or con"></div>
+      <div class="field"><label for="cat">Category</label><select id="cat"></select></div>
+      <div class="field"><label for="tier">Evidence</label><select id="tier">
+        <option value="">All analysed</option><option value="verified">Fact-checked</option><option value="source-audited">Source-audited</option><option value="readme-triaged">README-triaged</option><option value="listed-only">Listed only (off-target)</option></select></div>
+      <div class="field"><label for="or">OpenRouter</label><select id="or"><option value="">Any</option><option value="yes">Yes</option><option value="partial">Partial / config</option><option value="no">No</option></select></div>
+      <div class="field"><label for="min">Min score</label><select id="min"><option value="0">0</option><option value="4">4+</option><option value="5">5+</option><option value="6">6+</option><option value="7">7+</option></select></div>
+      <div class="field"><label for="sort">Sort</label><select id="sort"><option value="score">Score</option><option value="stars">Stars</option><option value="new">Newest</option><option value="name">Name</option></select></div>
+      <label class="check"><input id="mcp" type="checkbox"> MCP servers only</label>
+    </div>
+    <p class="summary-line" id="count" aria-live="polite"></p>
+    <div class="list" id="list"></div>
+    <button class="more" id="more" type="button" hidden>Show more</button>
+  </section>
+
+  <footer>
+    <p>Score is 0–10 for daily coding in Claude Code 2.1.285 with Opus, bypass-permission sessions and OpenRouter-hosted Jev, using the fact-checked or category-judge score where one exists. The ladder mirrors Jev's own Score primitive: ordered levels, not a probability.</p>
+    <p>Method: static reading only. No third-party code was run and no live Jev call was made. Nearly every project here is under a month old, so re-check a repository before installing it.</p>
+  </footer>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById('data').textContent);
+  var E = D.entries, L = D.listed, C = D.categories;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var PAGE = 60, shown = PAGE;
+  var TIER = { 'verified': ['fact-checked', 'accent'], 'source-audited': ['source-audited', 'neutral'], 'readme-triaged': ['README-triaged', 'neutral'], 'listed-only': ['listed only', 'neutral'] };
+  var ORD = ['decision-mcp', 'task-mcp', 'permission-gate', 'security-guard', 'stop-verifier', 'review-ci', 'code-search-nav', 'dev-skill', 'prompt-steering', 'context-pruning', 'compaction-memory', 'model-router', 'skill-tool-router', 'suite-plugin', 'library-harness', 'browser-os', 'eval-observability', 'other'];
+
+  $('gen').textContent = D.generated;
+  var t = D.stats;
+  $('stats').innerHTML = [['~1,500', 'Jev repos found'], [t.analysed.toLocaleString('en-US'), 'analysed'], [t.source, 'read from source'], [t.verified, 'fact-checked'], [t.mcp, 'MCP servers'], ['95%', 'created after 15 Sep 2026']]
+    .map(function (x) { return '<span><b>' + x[0] + '</b> ' + x[1] + '</span>'; }).join('');
+
+  var counts = {};
+  E.forEach(function (e) { counts[e.c] = (counts[e.c] || 0) + 1; });
+  var catSel = $('cat');
+  catSel.innerHTML = '<option value="">All categories</option>' + ORD.filter(function (k) { return counts[k]; }).map(function (k) { return '<option value="' + k + '">' + k + ' (' + counts[k] + ')</option>'; }).join('');
+
+  $('cats').innerHTML = ORD.filter(function (k) { return C[k]; }).map(function (k) {
+    var c = C[k], w = c.worthIt || 'situational', bp = c.bestPick || {};
+    return '<button class="cat" type="button" data-cat="' + k + '"><span class="top"><span class="name">' + esc(k) + '</span><span class="count">' + (counts[k] || 0) + '</span></span>' +
+      '<span><span class="pill ' + esc(w) + '">' + esc(w === 'yes' ? 'worth it' : w === 'no' ? 'not worth it' : 'situational') + '</span></span>' +
+      '<span class="best">Best pick: <b>' + esc(bp.name || 'none') + '</b></span></button>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.cat'), function (b) {
+    b.addEventListener('click', function () { catSel.value = b.getAttribute('data-cat'); shown = PAGE; render(); $('catalog').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  });
+
+  function ladder(s) {
+    var h = '';
+    for (var i = 1; i <= 10; i++) h += '<i class="' + (s >= i ? 'on' : s >= i - 0.5 ? 'half' : '') + '"></i>';
+    return '<span class="ladder" aria-hidden="true">' + h + '</span>';
+  }
+  function orLabel(o) { return o === 'yes' ? ['OpenRouter', 'yes'] : o === 'partial' ? ['OpenRouter: config', 'situational'] : o === 'no' ? ['TypeSafe only', 'no'] : ['OpenRouter: ?', 'neutral']; }
+  function list(xs) { return xs && xs.length ? '<ul>' + xs.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p>None recorded.</p>'; }
+
+  function rowHTML(e, i) {
+    if (e.tier === 'listed-only') {
+      return '<div class="row"><div class="row-head"><div class="row-main"><div class="row-title"><a href="' + esc(e.u) + '" target="_blank" rel="noopener">' + esc(e.n) + '</a><span class="pill neutral">listed only</span></div><p class="row-what">' + esc(e.w) + '</p></div><div class="row-side"><span class="stars">' + esc(e.sec || '') + '</span></div></div></div>';
+    }
+    var o = orLabel(e.o), tr = TIER[e.tier] || ['', 'neutral'];
+    var s = typeof e.s === 'number' ? e.s : 0;
+    return '<div class="row"><div class="row-head"><div class="row-main"><div class="row-title"><a href="' + esc(e.u) + '" target="_blank" rel="noopener">' + esc(e.n) + '</a>' +
+      '<span class="meta"><span class="pill neutral">' + esc(e.c) + '</span><span class="pill ' + tr[1] + '">' + tr[0] + '</span><span class="pill ' + o[1] + '">' + o[0] + '</span>' + (e.m ? '<span class="pill neutral">' + esc(e.m) + '</span>' : '') + '</span></div>' +
+      '<p class="row-what">' + esc(e.w) + '</p></div>' +
+      '<div class="row-side"><span class="scorebox" title="Score ' + s + ' of 10">' + ladder(s) + '<span>' + s + '</span></span>' +
+      '<span class="stars">★ ' + (e.st == null ? '?' : e.st.toLocaleString('en-US')) + (e.cr ? ' · ' + esc(e.cr) : '') + '</span>' +
+      '<button class="toggle" type="button" aria-expanded="false" data-i="' + i + '">Pros and cons</button></div></div>' +
+      '<div class="detail" id="d' + i + '" hidden></div></div>';
+  }
+  function detailHTML(e) {
+    var h = '<div><h4>Pros</h4>' + list(e.p) + '</div><div><h4>Cons</h4>' + list(e.k) + '</div>';
+    if (e.v) h += '<div class="wide"><h4>Verdict</h4><p>' + esc(e.v) + '</p></div>';
+    if (e.a) h += '<div><h4>How it runs without prompting</h4><p>' + esc(e.a) + '</p></div>';
+    if (e.i && e.i.length) h += '<div><h4>Interface</h4><p>' + esc(e.i.join(', ')) + '</p></div>';
+    if (e.sec && e.sec.length) h += '<div class="wide"><h4>Security notes</h4>' + list(e.sec) + '</div>';
+    if (e.vn) h += '<div class="wide"><h4>Fact-check</h4><p>' + esc(e.vn) + '</p></div>';
+    return h;
+  }
+
+  var current = [];
+  function render() {
+    var q = $('q').value.trim().toLowerCase(), c = catSel.value, tier = $('tier').value, o = $('or').value, min = +$('min').value, mcp = $('mcp').checked, sort = $('sort').value;
+    var src = tier === 'listed-only' ? L : E;
+    current = src.filter(function (e) {
+      if (tier && tier !== 'listed-only' && e.tier !== tier) return false;
+      if (tier !== 'listed-only') {
+        if (c && e.c !== c) return false;
+        if (o && e.o !== o) return false;
+        if (min && !((e.s || 0) >= min)) return false;
+        if (mcp && !e.mcp) return false;
+      }
+      if (q) { var hay = (e.n + ' ' + e.w + ' ' + (e.p || []).join(' ') + ' ' + (e.k || []).join(' ') + ' ' + (e.i || []).join(' ')).toLowerCase(); if (hay.indexOf(q) < 0) return false; }
+      return true;
+    });
+    current.sort(function (a, b) {
+      if (sort === 'stars') return (b.st || 0) - (a.st || 0);
+      if (sort === 'new') return String(b.cr || '').localeCompare(String(a.cr || ''));
+      if (sort === 'name') return String(a.n).localeCompare(String(b.n));
+      return (b.s || 0) - (a.s || 0) || (b.st || 0) - (a.st || 0);
+    });
+    $('count').textContent = current.length.toLocaleString('en-US') + ' of ' + src.length.toLocaleString('en-US') + ' shown' + (current.length > shown ? ' · first ' + shown : '');
+    $('list').innerHTML = current.length ? current.slice(0, shown).map(rowHTML).join('') : '<p class="empty">No integrations match these filters. Clear the search or lower the minimum score.</p>';
+    $('more').hidden = current.length <= shown;
+  }
+  $('list').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.toggle'); if (!b) return;
+    var i = +b.getAttribute('data-i'), d = $('d' + i), open = b.getAttribute('aria-expanded') === 'true';
+    if (!open && !d.innerHTML) d.innerHTML = detailHTML(current[i]);
+    d.hidden = open; b.setAttribute('aria-expanded', String(!open)); b.textContent = open ? 'Pros and cons' : 'Hide';
+  });
+  $('more').addEventListener('click', function () { shown += PAGE; render(); });
+  ['q', 'cat', 'tier', 'or', 'min', 'sort', 'mcp'].forEach(function (id) { $(id).addEventListener(id === 'q' ? 'input' : 'change', function () { shown = PAGE; render(); }); });
+  render();
+})();
+</script>

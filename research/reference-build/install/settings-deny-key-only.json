@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(~/.config/jev/**)",
+      "Edit(~/.config/jev/**)",
+      "Edit(~/.claude/hooks/**)",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/.claude/settings.local.json)",
+      "Edit(~/.local/state/jev/**)"
+    ]
+  }
+}

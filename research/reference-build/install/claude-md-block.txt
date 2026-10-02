@@ -1,0 +1,7 @@
+## Jev (typed yes/no judge via OpenRouter)
+- Feature needs classify/route/moderate/triage/gate/score decision: load skill typesafe-ai BEFORE writing an LLM prompt-and-parse step. State the fit-check result first. Not bounded + cheap + fail-open -> plain code or LLM. Client repo: state the data flow, ask first.
+- Never send keys or client data to Jev. Never read ~/.config/jev. Live Jev calls during development: the user runs them.
+<!-- add the next bullet when jev-brake T1 is enforcing (plan phase 4) -->
+- Hook jev-brake (Bash) denies some irreversible commands. If denied: do NOT retry, rephrase or work around it. Tell the user which rule fired; the user can run it themselves with `!`.
+<!-- add the next bullet only if the jev_triage trial is on (plan phase 6) -->
+- 30+ items vs ONE criterion, or before a Workflow/subagent fan-out over items: call mcp__jev__jev_triage first. Read `uncertain`; `clear_yes` = read next, unverified; drop `clear_no` only if the spot-check looks sane. "Refused" = screen by hand. Items already in a .json/.jsonl file: pass `items_file` (+ `where`, `id_field`, `text_fields`), never read and paste them; a call costs ~300 tokens, so always worth a try. Inline items only: skip Jev when most items mention both sides of the criterion (e.g. every blurb names Claude AND OpenRouter); it leaves ~80% `uncertain`, so pasting them costs more than it saves.
