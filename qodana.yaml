@@ -1,0 +1,77 @@
+#-------------------------------------------------------------------------------#
+#               Qodana analysis is configured by qodana.yaml file               #
+#             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
+#-------------------------------------------------------------------------------#
+# Run: scripts/check.sh qodana   (Docker, the Qodana CLI, and QODANA_TOKEN in the environment or
+# in .env). Do not store sensitive information in this file: it is copied into the report.
+version: "1.0"
+
+# Short product code plus an image pinned by digest: a newer linter ships new inspections.
+linter: qodana-python
+image: jetbrains/qodana-python:2026.2@sha256:eb9e4b66ebc4a0847f51618f197b2e42c67a2f598f1d18b95727fb802acf908e
+
+# qodana.recommended skips tests/**, *.md and whatever .gitignore lists; ruff, mypy, pytest at
+# 100% coverage and mutmut hold the tests.
+profile:
+  name: qodana.recommended
+
+# Ultimate Plus: the license audit of the dependencies (on by default), reported as problems so
+# the threshold below counts them. The scripts use the standard library only.
+raiseLicenseProblems: true
+failOnErrorNotification: true
+
+projectLicenses:
+  - key: "GPL-3.0-or-later"
+
+exclude:
+  # Not source: environments, generated mutants, reports and tool caches.
+  - name: All
+    paths:
+      - .venv
+      - mutants
+      - .qodana
+      - .idea
+      - htmlcov
+      - .mypy_cache
+      - .pytest_cache
+      - .ruff_cache
+
+  # Fake credentials, checked by hand: a research note quotes `Bearer sk-or-v1-bogus`, and the
+  # gate's test feeds made-up tokens to the redactor it tests.
+  - name: HardcodedPasswords
+    paths:
+      - research/data/round2_results.json
+      - research/reference-build/shelf/jev-gate.test.cjs
+
+  # The JavaScript reference build (sealed by jev/MANIFEST.sha256, tested by its own node --test
+  # suites) keeps its regexes and tests as written; these only report style or false positives.
+  - name: RegExpRedundantEscape  # `\]`, `\}` escaped on purpose
+    paths:
+      - research/reference-build
+  - name: RegExpRepeatedSpace  # doctor.cjs matches the two-space YAML indent
+    paths:
+      - research/reference-build
+  - name: RegExpSingleCharAlternation  # the xargs flag list reads as written
+    paths:
+      - research/reference-build
+  - name: RegExpSuspiciousBackref  # shellclass.cjs: group 3 (heredoc tag) precedes the alternation
+    paths:
+      - research/reference-build
+  - name: DuplicatedCode  # repeated test setup and parser branches
+    paths:
+      - research/reference-build
+
+# The interpreter for the analysis (QODANA_PYTHON_PATH, set by scripts/check.sh): a venv with
+# nothing but pip in the cache mount. Without one PyCharm assumes an old language level and rejects
+# `X | None`; the image's own conda Python would put conda's packages into the license audit; a venv
+# without pip leaves the IDE stuck at "Updating interpreter paths".
+bootstrap: |
+  set -eu
+  [ -x /data/cache/jev-venv/bin/pip ] || python3 -m venv --clear /data/cache/jev-venv
+
+failureConditions:
+  severityThresholds:
+    any: 0
+  dependencyLicenses:
+    failOnProhibited: true
+    failOnUnknown: true

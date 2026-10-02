@@ -57,7 +57,7 @@ test('static boundary: risky commands never reach Jev', () => {
 });
 test('secret values are detected (refuse to send)', () => {
   for (const c of ['curl -H "Authorization: Bearer abcdefghijklmnop" x', 'export API_KEY=abc123456', 'OPENAI_API_KEY=sk-abcdefghijklmnopqrstuv node x',
-    'git clone https://user:pass123@host/x.git', 'echo ghp_abcdefghijklmnopqrstuvwxyz0123', 'echo AKIAABCDEFGHIJKLMNOP', 'x --token=abcdef123456', 'echo eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig']) {
+    'git clone https://user:pass123@host/x.git', 'echo ghp_abcdefghijklmnopqrstuvwxyz0123', 'echo AKIAABCDEFGHIJKLMNOP', 'x --token=abcdef123456', 'echo eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig']) { // nosemgrep: generic.secrets.security.detected-aws-access-key-id-value.detected-aws-access-key-id-value (made-up key: the gate must redact it)
     assert.equal(G.hasSecret(c), true, c);
   }
   for (const c of ['npm test', 'echo TOKENIZER=fast', 'git log --oneline', 'grep -rn "keyword" src']) assert.equal(G.hasSecret(c), false, c);
@@ -222,7 +222,7 @@ test('skips: wrong tool, off, modes, dirs, secret, risky, long, empty, no key ->
     [inp({ permission_mode: 'dontAsk' }), base({ fetch: f }), 'skipped_mode'],
     [inp({ cwd: '/home/gio/client-x' }), base({ fetch: f }), 'skipped_dir'],
     [inp(), base({ cfg: { allowDirs: [] }, fetch: f }), 'skipped_dir'],
-    [inp({ tool_input: { command: 'echo AKIAABCDEFGHIJKLMNOP' } }), base({ fetch: f }), 'skipped_secret'],
+    [inp({ tool_input: { command: 'echo AKIAABCDEFGHIJKLMNOP' } }), base({ fetch: f }), 'skipped_secret'], // nosemgrep: generic.secrets.security.detected-aws-access-key-id-value.detected-aws-access-key-id-value (made-up key)
     [inp({ tool_input: { command: 'git push' } }), base({ fetch: f }), 'skipped_risky'],
     [inp({ tool_input: { command: 'x'.repeat(1001) } }), base({ fetch: f }), 'skipped_command'],
     [inp({ tool_input: { command: '   ' } }), base({ fetch: f }), 'skipped_command'],
@@ -301,7 +301,7 @@ test('process: risky/secret commands are logged, never sent; log is 0600; secret
   fs.mkdirSync(path.join(home, '.config/jev'), { recursive: true });
   fs.writeFileSync(path.join(home, '.config/jev/.env'), `OPENROUTER_API_KEY=${KEY}\n`, { mode: 0o600 });
   fs.writeFileSync(path.join(home, '.config/jev/gate.json'), JSON.stringify({ mode: 'enforce', allowDirs: [CWD] }));
-  for (const c of ['git push origin main', 'echo AKIAABCDEFGHIJKLMNOP']) {
+  for (const c of ['git push origin main', 'echo AKIAABCDEFGHIJKLMNOP']) { // nosemgrep: generic.secrets.security.detected-aws-access-key-id-value.detected-aws-access-key-id-value (made-up key)
     const r = run(home, JSON.stringify(inp({ tool_input: { command: c, description: 'x' } }))); assert.equal(r.status, 0); assert.equal(r.stdout, '');
   }
   const log = logOf(home);

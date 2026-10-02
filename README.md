@@ -32,6 +32,8 @@ It is good at bounded decisions on short text: routing, triage, moderation, gati
 | `research/reference-build/test/` | Offline test suites (mock OpenRouter endpoint, temporary git repos) |
 | `research/reference-build/shelf/` | Experimental gates that were evaluated and not installed |
 | `research/reference-build/backtest/` | Replay of past Claude Code sessions against the brake rules (counts only) |
+| `tests/` | pytest suites for the Python scripts (100% line and branch coverage, every mutant killed) |
+| `scripts/check.sh` | Quality gate: Qodana, ruff, mypy, pytest, semgrep, trivy, mutmut ([below](#python-tests-and-quality-gate)) |
 
 ## The `jev_triage` MCP server
 
@@ -107,6 +109,16 @@ python3 research/build_page.py      # injects a scrubbed copy into jev-in-claude
 ```
 
 Edit labels in `research/data/routes.json`, not in `catalog.json`.
+
+## Python tests and quality gate
+
+```bash
+uv sync                          # pytest, pytest-cov, ruff, mypy, mutmut
+scripts/check.sh                 # qodana -> ruff -> mypy -> pytest -> semgrep -> trivy -> mutmut
+scripts/check.sh pytest mutmut   # any subset, still in that order
+```
+
+The gate needs Docker (Qodana, Trivy), the [Qodana CLI](https://www.jetbrains.com/help/qodana/qodana-cli.html) and `QODANA_TOKEN` (Ultimate Plus), taken from the environment or from a `QODANA_TOKEN=...` line in `.env` (git-ignored). pytest fails under 100% line and branch coverage, and mutmut fails on any mutant left alive. The tests compare each script's output with the committed file, so rerun the build scripts after editing their inputs. The first run needs network: it pulls the Qodana and Trivy images, the semgrep rule packs and the Trivy vulnerability database.
 
 ## Security and privacy
 

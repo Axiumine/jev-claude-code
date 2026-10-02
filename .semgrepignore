@@ -1,0 +1,14 @@
+# Semgrep defaults minus test/ and tests/, so the tests are scanned too.
+# Git-ignored files are skipped anyway.
+node_modules/
+build/
+dist/
+vendor/
+.venv/
+.tox/
+*.min.js
+.npm/
+.yarn/
+.semgrep
+.semgrep_logs/
+mutants/

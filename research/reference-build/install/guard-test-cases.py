@@ -1,13 +1,17 @@
-import re
-p = 'no-secret-leak.test.cjs'
-s = open(p, encoding='utf8').read()
-if 'Jev hooks: OpenRouter key' in s:
-    print('cases already present')
-    raise SystemExit(0)
-anchor = "  ['Bash process env code',"
-i = s.index(anchor)
-j = s.index('\n', i)
-new = """
+#!/usr/bin/env python3
+"""Add the Jev secret-guard cases to no-secret-leak.test.cjs in the current directory (idempotent).
+
+Usage: python3 guard-test-cases.py   (run in the directory holding no-secret-leak.test.cjs)
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+TEST_FILE = "no-secret-leak.test.cjs"
+MARKER = "Jev hooks: OpenRouter key"
+ANCHOR = "  ['Bash process env code',"
+NEW_CASES = """
   // Jev hooks: OpenRouter key variable and the key directory (~/.config/jev) must be as protected as the other secrets
   ['Bash expand OpenRouter key', { tool_name: 'Bash', tool_input: { command: 'echo $OPENROUTER_' + 'API_KEY' } }, 'deny'],
   ['Bash printenv OpenRouter key', { tool_name: 'Bash', tool_input: { command: 'printenv OPENROUTER_' + 'API_KEY' } }, 'deny'],
@@ -49,6 +53,30 @@ new = """
   ['Read other config file', { tool_name: 'Read', tool_input: { file_path: '/home/user/.config/nvim/init.lua' } }, 'allow'],
   ['Grep jev-mcp repo', { tool_name: 'Grep', tool_input: { pattern: 'OPENROUTER', path: '/home/user/code/jev-mcp' } }, 'allow'],
   ['Monitor tail log', { tool_name: 'Monitor', tool_input: { command: 'tail -f /var/log/syslog', description: 'x' } }, 'allow'],"""
-s = s[:j] + new + s[j:]
-open(p, 'w', encoding='utf8').write(s)
-print('cases added')
+
+
+def add_cases(source: str) -> str | None:
+    """Insert NEW_CASES after the anchor case's line; None when the cases are already there."""
+    if MARKER in source:
+        return None
+    i = source.index(ANCHOR)
+    j = source.find("\n", i)
+    if j == -1:  # the anchor case is the last line
+        j = len(source)
+    return source[:j] + NEW_CASES + source[j:]
+
+
+def main() -> int:
+    path = Path(TEST_FILE)
+    source = path.read_text(encoding="utf-8")  # pragma: no mutate  (utf-8 == locale default: equivalent mutants)
+    updated = add_cases(source)
+    if updated is None:
+        print("cases already present")
+        return 0
+    path.write_text(updated, encoding="utf-8")  # pragma: no mutate
+    print("cases added")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

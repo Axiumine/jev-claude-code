@@ -1,1 +1,16 @@
 .idea/
+# local secrets (QODANA_TOKEN): never commit
+.env
+.env.*
+*.env
+# Python tooling
+.venv/
+__pycache__/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+mutants/
+.qodana/

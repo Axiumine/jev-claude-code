@@ -1,0 +1,65 @@
+[project]
+name = "jev-claude-code"
+version = "0.1.0"
+description = "Research snapshot and reference build for using Jev (TypeSafe System One) inside Claude Code"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mutmut>=3.8",
+    "mypy>=2.4",
+    "pytest>=9.1",
+    "pytest-cov>=7.1",
+    "ruff>=0.16",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["mutants"]
+
+[tool.ruff.lint]
+select = [
+    "A", "B", "C4", "E", "ERA", "F", "FURB", "I", "N", "PERF", "PIE", "PL", "PT", "PTH",
+    "RET", "RUF", "S", "SIM", "UP", "W",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# NEW_CASES is a verbatim JavaScript block inserted into another file.
+"research/reference-build/install/guard-test-cases.py" = ["E501"]
+"tests/**" = ["PLR2004", "S101"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["research", "tests"]
+explicit_package_bases = true
+exclude = ["^mutants/"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+source = ["research", "tests"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+include_namespace_packages = true
+
+[tool.mutmut]
+source_paths = ["research"]
+pytest_add_cli_args_test_selection = ["tests/"]
