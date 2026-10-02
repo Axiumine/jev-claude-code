@@ -1,0 +1,177 @@
+# Git hooks, managed by pre-commit (https://pre-commit.com; prek reads the same file).
+#   uv sync --locked
+#   uv run pre-commit install                                  # every hook type listed below
+#   uv run pre-commit run --all-files                          # the commit stage on the whole repository
+#   uv run pre-commit run --all-files --hook-stage pre-push    # the push stage, as on git push
+#   uv run pre-commit run --hook-stage manual gate-qodana      # one gate step (gate-<step>)
+# Commit stage: fast checks of what is staged (pre-commit stashes the rest meanwhile). Commit
+# message: the privacy guard. Push stage: the privacy guard on every pushed commit, then the whole
+# gate of scripts/check.sh, one hook per step in its order, on a clean checkout of the pushed
+# commit. After checkout and merge: uv sync keeps .venv on uv.lock.
+# The hooks call uv, uvx and docker (and the qodana CLI at push): they must be on the PATH of
+# whatever runs git. `git push --no-verify` skips the push stage; SKIP=gate-qodana skips one hook.
+minimum_pre_commit_version: 4.4.0 # language: unsupported (formerly system)
+default_install_hook_types: [pre-commit, commit-msg, pre-push, post-checkout, post-merge]
+default_stages: [pre-commit]
+exclude: ^mutants/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=8192] # the research data files reach about 6 MB
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: check-executables-have-shebangs
+      - id: check-symlinks
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks # with .gitleaks.toml
+
+  - repo: local
+    hooks:
+      # ---- commit stage: what is staged ----
+      - id: git-guard
+        name: git-guard (private links, env files, project keys)
+        entry: uv run --locked python scripts/git_guard.py files
+        language: unsupported
+      - id: uv-lock
+        name: uv.lock is up to date
+        entry: uv lock --check
+        language: unsupported
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --locked ruff check --fix --force-exclude
+        language: unsupported
+        types_or: [python, pyi]
+        require_serial: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format --force-exclude
+        language: unsupported
+        types_or: [python, pyi]
+        require_serial: true
+      - id: mypy
+        name: mypy
+        entry: uv run --locked mypy
+        language: unsupported
+        types_or: [python, pyi, toml]
+        pass_filenames: false # the whole program, as configured in [tool.mypy]
+      - id: pytest
+        name: pytest, 100% line and branch coverage
+        # Always: the tests compare the scripts' output with the committed data files.
+        entry: uv run --locked pytest -q --cov
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+
+      # ---- commit message ----
+      - id: git-guard-message
+        name: git-guard (commit message)
+        entry: uv run --locked python scripts/git_guard.py message
+        language: unsupported
+        stages: [commit-msg]
+
+      # ---- push stage: every pushed commit, then the gate in its order ----
+      # pre-commit tells the hooks about the first pushed ref only, so this one reads every commit
+      # of the local branches and tags that the remote lacks; fail_fast: a failed check stops the
+      # push stage before the slow steps.
+      - id: git-guard-pushed
+        name: git-guard (every local commit the remote lacks, and its message)
+        entry: uv run --locked python scripts/git_guard.py pushed
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        fail_fast: true
+        stages: [pre-push]
+      - id: pushed-checkout
+        name: the pushed commit is checked out, nothing staged or untracked
+        # The gate checks the working tree (pre-commit stashes unstaged edits meanwhile), so the tree
+        # must be what is pushed.
+        entry: uv run --locked python scripts/git_guard.py checked-out
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        fail_fast: true
+        stages: [pre-push]
+      - id: gate-qodana
+        name: gate 1/7 Qodana (Docker, QODANA_TOKEN)
+        entry: scripts/check.sh qodana
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+      - id: gate-ruff
+        name: gate 2/7 ruff
+        entry: scripts/check.sh ruff
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+      - id: gate-mypy
+        name: gate 3/7 mypy
+        entry: scripts/check.sh mypy
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+      - id: gate-pytest
+        name: gate 4/7 pytest, 100% coverage
+        entry: scripts/check.sh pytest
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+      - id: gate-semgrep
+        name: gate 5/7 semgrep (network)
+        entry: scripts/check.sh semgrep
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+      - id: gate-trivy
+        name: gate 6/7 trivy (Docker, network)
+        entry: scripts/check.sh trivy
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+      - id: gate-mutmut
+        name: gate 7/7 mutmut, every mutant killed
+        entry: scripts/check.sh mutmut
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        fail_fast: true
+        stages: [pre-push, manual]
+
+      # ---- after checkout and merge: keep .venv on uv.lock ----
+      - id: uv-sync
+        name: uv sync
+        entry: uv sync --locked
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        stages: [post-checkout, post-merge]

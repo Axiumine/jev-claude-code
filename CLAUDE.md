@@ -6,5 +6,7 @@
 
 ## Python checks
 - Gate: `scripts/check.sh [step ...]`, always in the order qodana, ruff, mypy, pytest, semgrep, trivy, mutmut. One run at a time: mutmut rebuilds mutants/, Qodana rewrites .qodana/.
+- Git hooks (pre-commit, `.pre-commit-config.yaml`): commit stage runs the fast checks and scripts/git_guard.py, push stage the whole gate. Never bypass them (`--no-verify`, SKIP=) unless the user asks.
+- Never put private links (claude.ai artifacts/chats/sessions, Qodana Cloud reports), env files or keys in tracked files or commit messages: the repo is public.
 - Required: 100% line and branch coverage, every mutmut mutant killed. `# pragma: no mutate` only on the utf-8 I/O lines (equivalent mutants); no `pragma: no cover`.
 - Never read .env (QODANA_TOKEN): check.sh reads that one key itself.

@@ -34,6 +34,7 @@ It is good at bounded decisions on short text: routing, triage, moderation, gati
 | `research/reference-build/backtest/` | Replay of past Claude Code sessions against the brake rules (counts only) |
 | `tests/` | pytest suites for the Python scripts (100% line and branch coverage, every mutant killed) |
 | `scripts/check.sh` | Quality gate: Qodana, ruff, mypy, pytest, semgrep, trivy, mutmut ([below](#python-tests-and-quality-gate)) |
+| `scripts/git_guard.py` | Git-hook guard against private links, env files and project keys ([below](#git-hooks)) |
 
 ## The `jev_triage` MCP server
 
@@ -113,12 +114,26 @@ Edit labels in `research/data/routes.json`, not in `catalog.json`.
 ## Python tests and quality gate
 
 ```bash
-uv sync                          # pytest, pytest-cov, ruff, mypy, mutmut
+uv sync --locked                 # pytest, pytest-cov, ruff, mypy, mutmut, pre-commit
+uv run pre-commit install        # the git hooks below, once per clone
 scripts/check.sh                 # qodana -> ruff -> mypy -> pytest -> semgrep -> trivy -> mutmut
 scripts/check.sh pytest mutmut   # any subset, still in that order
 ```
 
 The gate needs Docker (Qodana, Trivy), the [Qodana CLI](https://www.jetbrains.com/help/qodana/qodana-cli.html) and `QODANA_TOKEN` (Ultimate Plus), taken from the environment or from a `QODANA_TOKEN=...` line in `.env` (git-ignored). pytest fails under 100% line and branch coverage, and mutmut fails on any mutant left alive. The tests compare each script's output with the committed file, so rerun the build scripts after editing their inputs. The first run needs network: it pulls the Qodana and Trivy images, the semgrep rule packs and the Trivy vulnerability database.
+
+### Git hooks
+
+The hooks are managed by [pre-commit](https://pre-commit.com) (`.pre-commit-config.yaml`).
+
+| Moment | Checks |
+|---|---|
+| commit (staged files) | file hygiene (large files, merge markers, JSON/TOML/YAML, private keys), gitleaks (`.gitleaks.toml`), `scripts/git_guard.py`, `uv lock --check`, ruff lint and format, mypy, pytest with 100% coverage |
+| commit message | `scripts/git_guard.py` |
+| push | `scripts/git_guard.py` on every local commit the remote lacks; the pushed commit must be checked out with nothing uncommitted; then the whole gate in order, one hook per step |
+| after checkout and merge | `uv sync --locked` |
+
+`scripts/git_guard.py` blocks private claude.ai and Qodana Cloud links, env files, OpenRouter keys and `QODANA_TOKEN` values: in the whole content of every staged file, in commit messages, and at push in every commit, merge result and annotated tag message the remote lacks. A line meant to hold one carries the marker `git-guard: allow`. One gap: a push of nothing but a tag whose commit the remote already has runs no pre-commit hook, so that tag's message is not checked. A push takes a few minutes, most of it Qodana. `SKIP=gate-qodana git push` skips one hook, `uv run pre-commit run --hook-stage manual gate-mutmut` runs one gate step alone. The hooks call `uv`, `docker` and `qodana`, so they must be on the `PATH` of whatever runs git.
 
 ## Security and privacy
 

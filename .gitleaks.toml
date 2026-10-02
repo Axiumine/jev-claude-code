@@ -1,0 +1,24 @@
+# gitleaks (commit-stage hook in .pre-commit-config.yaml): the default rules, minus known non-secrets.
+# Each allowlist names the file AND the exact made-up value (condition AND), so a real secret added to
+# any of these files, or a new file next to them, is still reported.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Research data and the page built from it quote made-up keys and 'curl|bash' text from the audited projects"
+condition = "AND"
+paths = ['''^research/data/(deep_results|round2_results)\.json$''', '''^research/jev-in-claude-code\.html$''']
+regexes = ['''^(Cascade/verify|sk-or-v1-bogus|jevmcp_\.\.\.)$''']
+
+[[allowlists]]
+description = "Test fixtures: made-up keys that the guards under test must catch"
+condition = "AND"
+paths = ['''^research/reference-build/(shelf/jev-gate|test/e2e)\.test\.cjs$''']
+# AKIA...(?:OP): the same literal, written so that secret scanners do not match it.
+regexes = ['''^(AKIAABCDEFGHIJKLMN(?:OP)|abcdef123456|abcdefghijklmnop|abcd1234efgh5678)$''']
+
+[[allowlists]]
+description = "SPDX license id in qodana.yaml is not a key"
+condition = "AND"
+paths = ['''^qodana\.yaml$''']
+regexes = ['''^GPL-3\.0-or-later$''']

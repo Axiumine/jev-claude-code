@@ -2,6 +2,9 @@
 # local secrets (QODANA_TOKEN): never commit
 .env
 .env.*
+.env-*
+.env_*
+.envrc
 *.env
 # Python tooling
 .venv/

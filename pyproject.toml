@@ -11,6 +11,7 @@ dependencies = []
 dev = [
     "mutmut>=3.8",
     "mypy>=2.4",
+    "pre-commit>=4.6",
     "pytest>=9.1",
     "pytest-cov>=7.1",
     "ruff>=0.16",
@@ -38,7 +39,7 @@ select = [
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["research", "tests"]
+files = ["research", "scripts", "tests"]
 explicit_package_bases = true
 exclude = ["^mutants/"]
 
@@ -52,7 +53,7 @@ filterwarnings = ["error"]
 
 [tool.coverage.run]
 branch = true
-source = ["research", "tests"]
+source = ["research", "scripts", "tests"]
 
 [tool.coverage.report]
 fail_under = 100
@@ -61,5 +62,5 @@ skip_covered = true
 include_namespace_packages = true
 
 [tool.mutmut]
-source_paths = ["research"]
+source_paths = ["research", "scripts"]
 pytest_add_cli_args_test_selection = ["tests/"]
