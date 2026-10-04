@@ -2,7 +2,7 @@
 
 Our own Jev MCP server: one tool, `jev_triage`, a cheap bulk yes/no screen for 30+ items against one criterion.
 
-- Code: `reference-build/jev/mcp/jev-mcp.cjs` (141 lines) plus the shared `reference-build/jev/lib/jevlib.cjs` (279 lines), Node built-ins only. Optional reminder hook: `reference-build/jev/hooks/nudge.cjs` (94 lines).
+- Code: `reference-build/jev/mcp/jev-mcp.cjs` (141 lines) plus the shared `reference-build/jev/lib/jevlib.cjs` (279 lines), Node built-ins only. Optional reminder hook: `reference-build/jev/hooks/nudge.cjs` (119 lines).
 - Installed at `~/.claude/hooks/jev/mcp/jev-mcp.cjs`, registered at user scope (`claude mcp get jev`).
 - Why our own: integration report section 5 recommends no community server, only one self-hosted tool as a 3-week trial.
 - Compared against the top community picks from report section 4.1: FrancoisChastel/jev-code, jkudish/jev-mcp, itsmostafa/system-one-connector.
@@ -20,7 +20,7 @@ Our own Jev MCP server: one tool, `jev_triage`, a cheap bulk yes/no screen for 3
 | Output | clear_no / uncertain / clear_yes buckets (0.05 / 0.95), spot-check of dropped items, cost and model trailer | Raw probabilities per call | Live output |
 | Instructions | Server instructions say when NOT to use it (fewer than 30 items, reasoning, code correctness, security, non-English) | Mostly "use me" | `INSTRUCTIONS` in `jev-mcp.cjs` |
 | Shared plumbing | Same policy, breaker, budget and log as the hooks; `report.cjs` sees triage calls and refusals (by reason) | Separate or none | `jevlib.cjs` |
-| Tests | e2e suite includes MCP handshake, refusal-logging and reminder-hook tests; 208/208 offline tests pass | Mixed; system-one-connector has no CI test gate | Run 2026-10-04 |
+| Tests | e2e suite includes MCP handshake, refusal-logging and reminder-hook tests; 209/209 offline tests pass | Mixed; system-one-connector has no CI test gate | Run 2026-10-04 |
 | Cost | About $0.001 and 1 s per 100 items | Similar per call | Live calls |
 
 ## Cons

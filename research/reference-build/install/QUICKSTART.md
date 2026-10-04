@@ -91,7 +91,7 @@ Restart Claude Code, then:
 
 The tool's schema is always loaded, but Claude still decides on its own whether to call it. In a 24-hour trial, server instructions and the CLAUDE.md bullet alone produced no calls. The `jev-nudge` hook adds a short reminder at the moments the tool fits:
 
-- after a Bash listing (`grep`, `rg`, `find`, `ls`, `git ls-files`/`grep`, `git log --oneline`, `gh ... list`, `gh search`, `jq -r`) or a Grep or Glob result with 30+ items;
+- after a Bash listing (`grep`, `rg`, `find`, `ls`, `git ls-files`/`grep`, `git log --oneline`, `gh ... list`, `gh search`, `jq -r`) or a Grep or Glob result with 30+ items. The listing must be the last command, after only quiet ones such as `cd` or `export`: in `git commit && git log --oneline` most of the output is the commit's own;
 - before a Workflow or Agent call over 30+ items (a 30+ item array in the Workflow `args`, or a sentence such as "for each of the 120 files" in the script or prompt).
 
 It never blocks and never calls Jev. The reminder text is fixed, so no tool output gets into it. It stays silent outside personal roots, and fires at most 3 times per session, 10 minutes apart.

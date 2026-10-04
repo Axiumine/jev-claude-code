@@ -563,3 +563,10 @@ test('merge-settings: the nudge-only snippet keeps other Jev hooks and user hook
   assert.deepStrictEqual(j.permissions.deny, ['Read(x)']);
   assert.match(sh().stdout, /no change needed/);
 });
+test('nudge: only a chain that ends in a listing after quiet commands counts; quotes and redirections do not split commands', async () => {
+  const e = nudgeEnv(); let i = 0; const run = async (cmd) => nudgeText(await runHook('nudge.cjs', listing(cmd, 43, { session_id: 'ch' + i++ }), e));
+  const commit = "git switch -c b && git add -A && git commit -q -F - <<'EOF'\nSubject\n\nbody; ls\nEOF\ngit log --oneline -2; git status --short | wc -l";
+  for (const cmd of [commit, 'git commit -qm x && git log --oneline -2', 'npm test; grep -c fail out.txt', 'make && ls dist', 'sleep 1 & ls']) assert.strictEqual(await run(cmd), '', cmd);
+  for (const cmd of ['grep -rn "a;b && c" src', "rg 'x || y' .", 'ls src; ls lib', '(cd src && ls)', 'export X=1; rg foo', 'X=1\nfind . -name "*.ts"', 'ls 2>&1 | head -50', 'make build 2>&1 | grep -v warn'])
+    assert.match(await run(cmd), /43 items/, cmd);
+});

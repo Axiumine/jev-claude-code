@@ -7,7 +7,7 @@ Only want the jev_triage MCP tool? Use QUICKSTART.md instead. This file is the f
 
 1. Read and test before trusting (HOME must NOT be under /tmp: the classifier treats /tmp as scratch):
    cd $REPO && wc -l jev/lib/*.cjs jev/hooks/*.cjs jev/mcp/*.cjs        # ~1.2k lines; read jevlib.cjs, brake.cjs, webscreen.cjs, nudge.cjs
-   HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs        # expect: tests 208, pass 208
+   HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs        # expect: tests 209, pass 209
    (cd shelf && HOME=/nonexistent-home/x node --test jev-gate.test.cjs)                 # expect: tests 28, pass 28 (shelved gate, not installed)
 
 2. Secret-leak guard. guard-patch.diff targets the author's own PreToolUse hook ~/.claude/hooks/no-secret-leak.cjs, which is NOT in this repo.

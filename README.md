@@ -69,7 +69,7 @@ How Claude uses it: drop `clear_no` after the spot-check looks sane, read `uncer
 | Visibility | Always loaded (`_meta` `anthropic/alwaysLoad`): while deferred, Claude never fetched it in a 24-hour trial over 5 projects. Costs about 600 tokens of context |
 | Logging | Every call is logged, refusals included (reason and root class), so `report.cjs` can tell "refused" from "never called" |
 | Reminder hook | Optional `jev-nudge` hook: after a listing of 30+ items or before a fan-out over 30+ items, it reminds Claude of the tool. Static text, at most 3 per session, personal roots only, never calls Jev |
-| Size | About 140 lines plus a 280-line shared lib and a 94-line optional hook, no dependencies |
+| Size | About 140 lines plus a 280-line shared lib and a 119-line optional hook, no dependencies |
 
 Full comparison and the trial log: [research/JEV-MCP-PROS-CONS.md](research/JEV-MCP-PROS-CONS.md).
 
@@ -100,7 +100,7 @@ The full staged plan, including the optional Bash brake and web tripwire hooks, 
 
 ```bash
 cd research/reference-build
-HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs   # 208 tests
+HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs   # 209 tests
 (cd shelf && HOME=/nonexistent-home/x node --test jev-gate.test.cjs)            # 28 tests
 ```
 

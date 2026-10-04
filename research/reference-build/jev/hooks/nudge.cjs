@@ -11,11 +11,36 @@ const fs = require('fs');
 const path = require('path');
 const L = require('../lib/jevlib.cjs');
 
-// Bash commands that print a list: the first word of any line or segment of a pipeline or command sequence, after env assignments,
-// sudo or time. git log and jq count only in their one-record-per-line forms (git log -p or jq . print diffs and objects, not lists).
-const LISTER = new RegExp('(^|[;&|(\\n])\\s*(?:\\w+=\\S*\\s+|sudo\\s+|time\\s+|command\\s+)*' +
-  '(grep|rg|ag|find|fd|ls|tree|git(?:\\s+-C\\s+\\S+)?\\s+(?:ls-files|grep|branch|tag|log(?=[^;&|\\n]*--(?:oneline|format|pretty|name-only)))' +
-  '|gh\\s+(?:\\S+\\s+list|search)|jq(?=[^;&|\\n]*\\s(?:-[a-zA-Z]*[rc]\\b|--raw-output|--compact-output)))\\b');
+// A command that prints a list: a listing tool at the start of the command or of any pipe stage, after env assignments, sudo or time.
+// git log and jq count only in their one-record-per-line forms (git log -p or jq . print diffs and objects, not lists).
+const LISTER = new RegExp('(?:^|\\|)\\s*(?:\\w+=\\S*\\s+|sudo\\s+|time\\s+|command\\s+)*' +
+  '(grep|rg|ag|find|fd|ls|tree|git(?:\\s+-C\\s+\\S+)?\\s+(?:ls-files|grep|branch|tag|log(?=[^|]*--(?:oneline|format|pretty|name-only)))' +
+  '|gh\\s+(?:\\S+\\s+list|search)|jq(?=[^|]*\\s(?:-[a-zA-Z]*[rc]\\b|--raw-output|--compact-output)))\\b');
+// Commands that print nothing worth counting, so they may precede the listing.
+const QUIET = /^(?:(?:cd|pushd|popd|export|unset|set|source|\.|mkdir|umask|true|:)(?:\s|$)|\w+=\S*$)/;
+
+// Split a Bash command line into its sequential commands (; && || & newline), outside quotes; pipes stay inside one command.
+function commands(line) {
+  const out = []; let cur = '', q = null;
+  const cut = () => { out.push(cur.trim().replace(/^[({]\s*/, '').replace(/\s*[)}]$/, '')); cur = ''; };
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i], n = line[i + 1];
+    if (q) { cur += c; if (c === '\\' && q === '"' && n !== undefined) cur += line[++i]; else if (c === q) q = null; continue; }
+    if (c === '\\' && n !== undefined) { cur += c + line[++i]; continue; }
+    if (c === "'" || c === '"') { q = c; cur += c; continue; }
+    if ((c === '&' && n === '&') || (c === '|' && n === '|')) { cut(); i++; continue; }
+    if (c === ';' || c === '\n' || (c === '&' && n !== '>' && line[i - 1] !== '>')) { cut(); continue; }
+    cur += c;
+  }
+  cut();
+  return out.filter(Boolean);
+}
+// The output counts as a list only when the last command lists something and every command before it is quiet or a listing too:
+// in `git commit ... && git log --oneline -2` most of the output is the commit's own, not a list.
+function isListing(line) {
+  const cs = commands(line);
+  return cs.length > 0 && LISTER.test(cs[cs.length - 1]) && cs.slice(0, -1).every((c) => QUIET.test(c) || LISTER.test(c));
+}
 // "120 files", "45 open issues": a count the model wrote into a fan-out prompt or script. Counted only in a sentence that also says
 // the work goes per item ("each", "every", "per", "across", ...), so "read the first 200 rows" is not a fan-out.
 const NUM_NOUN = /\b(\d{2,4})\s+(?:[a-z-]+\s+)?(files|items|hits|matches|issues|prs|pull requests|repos|repositories|entries|records|results|candidates|rows|stories|urls|packages|endpoints)\b/gi;
@@ -47,7 +72,7 @@ function count(input) {
   }
   if (input.hook_event_name !== 'PostToolUse') return 0;
   if (t === 'Bash') {
-    if (!LISTER.test(String(ti.command || '')) || (tr && tr.interrupted)) return 0;
+    if (!isListing(String(ti.command || '')) || (tr && tr.interrupted)) return 0;
     return lines(typeof tr === 'string' ? tr : tr && tr.stdout);
   }
   if (t === 'Grep' || t === 'Glob') {
