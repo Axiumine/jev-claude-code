@@ -2,7 +2,7 @@
 
 Our own Jev MCP server: one tool, `jev_triage`, a cheap bulk yes/no screen for 30+ items against one criterion.
 
-- Code: `reference-build/jev/mcp/jev-mcp.cjs` (135 lines) plus the shared `reference-build/jev/lib/jevlib.cjs` (275 lines), Node built-ins only.
+- Code: `reference-build/jev/mcp/jev-mcp.cjs` (141 lines) plus the shared `reference-build/jev/lib/jevlib.cjs` (279 lines), Node built-ins only. Optional reminder hook: `reference-build/jev/hooks/nudge.cjs` (94 lines).
 - Installed at `~/.claude/hooks/jev/mcp/jev-mcp.cjs`, registered at user scope (`claude mcp get jev`).
 - Why our own: integration report section 5 recommends no community server, only one self-hosted tool as a 3-week trial.
 - Compared against the top community picks from report section 4.1: FrancoisChastel/jev-code, jkudish/jev-mcp, itsmostafa/system-one-connector.
@@ -19,15 +19,16 @@ Our own Jev MCP server: one tool, `jev_triage`, a cheap bulk yes/no screen for 3
 | Bounded | 8 items per request, 8 in parallel, 6 s per request, 45 s total, $0.05 cap per call; fails open with error counts | jkudish caps exceed Jev's 32k context | Code; e2e tests |
 | Output | clear_no / uncertain / clear_yes buckets (0.05 / 0.95), spot-check of dropped items, cost and model trailer | Raw probabilities per call | Live output |
 | Instructions | Server instructions say when NOT to use it (fewer than 30 items, reasoning, code correctness, security, non-English) | Mostly "use me" | `INSTRUCTIONS` in `jev-mcp.cjs` |
-| Shared plumbing | Same policy, breaker, budget and log as the hooks; `report.cjs` sees triage calls | Separate or none | `jevlib.cjs` |
-| Tests | e2e suite includes an MCP handshake test; 194/194 offline tests pass | Mixed; system-one-connector has no CI test gate | Run 2026-10-02 |
+| Shared plumbing | Same policy, breaker, budget and log as the hooks; `report.cjs` sees triage calls and refusals (by reason) | Separate or none | `jevlib.cjs` |
+| Tests | e2e suite includes MCP handshake, refusal-logging and reminder-hook tests; 208/208 offline tests pass | Mixed; system-one-connector has no CI test gate | Run 2026-10-04 |
 | Cost | About $0.001 and 1 s per 100 items | Similar per call | Live calls |
 
 ## Cons
 
 | Area | Problem | Mitigation |
 |---|---|---|
-| Discretion | Claude calls it only when it decides to; one published benchmark saw 0 unprompted calls in 150 | CLAUDE.md bullet; server instructions |
+| Discretion | Claude calls it only when it decides to; one published benchmark saw 0 unprompted calls in 150, and our trial saw 0 in 24 hours | Always-loaded schema; optional `jev-nudge` reminder at listings and fan-outs of 30+ items; CLAUDE.md bullet; server instructions |
+| Context | Always loaded: about 600 tokens of context in every session, and startup waits for the server | Deferral was tried first and the tool was never fetched |
 | Accuracy on subtle criteria | 73-91% of items come back uncertain when the text doesn't state the answer outright | Use only clear-cut criteria; label data (e.g. `routes.json`) for repeat questions |
 | False clear_yes | Confident answers can still be wrong (1 of 16 clear_yes on 2026-10-02) | Treat clear_yes as "read next", never as verified |
 | One verb | No classify, score or rank | Deliberate; add a verb to this server only on evidence |
@@ -46,9 +47,11 @@ Add one row per real use or test. Keep counting real (unprompted or task-driven)
 | 2026-10-02 | test | Model-router entries: routes between Claude models? (6 runs, report section 11) | 103 | 73-91% uncertain; 96 confident calls checked, none contradicted labels | ~$0.0008 per run |
 | 2026-10-02 | test | Same criterion via `items_file`, checked against `routes.json` | 103 | 85 uncertain, 16 clear_yes (15 right; `gh-xinyao27-jevonian` labelled provider-pool), 2 clear_no (both right) | $0.00087, 1.0 s |
 | 2026-10-02 | test | `items_file` = `.git/config`, and a path outside the project | 0 | Both refused locally, no network call | $0 |
+| 2026-10-04 | review | 24 hours of real work in 5 projects (6 sessions, about 650 workflow agents): why 0 calls? | 0 | No session had a 30+ item screen; the deferred tool was never ToolSearch-ed; 4 of 5 projects were outside a personal root, so a call would have been refused (refusals were not logged then). Changes: always-loaded schema, refusal logging, `jev-nudge` hook | $0 |
 
 ## Keep or kill
 
 - Kill rule: fewer than 1 real call per week by day 21, then `claude mcp remove jev --scope user`.
 - Day 30 review: keep only with measurable savings (tokens or turns avoided) and no wrong drop that mattered.
-- Real calls so far: 0. All 7 logged triage calls (2026-10-02) were tests. Count them by day from the `"triage"` rows in `~/.local/state/jev/log-*.jsonl`.
+- Real calls so far: 0. All 7 logged triage calls (2026-10-02) were tests. Count them by day from the `"triage"` rows in `~/.local/state/jev/log-*.jsonl`. Since 2026-10-04 refusals are logged too (`"decision":"refused"`) and do not count as calls; `"nudge"` rows count the moments the reminder hook saw a candidate.
+- Restart the 21-day count on 2026-10-04: the tool was invisible (deferred) and refused in most projects before that.

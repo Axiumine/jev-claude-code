@@ -605,7 +605,7 @@ If you ever want a second verb, add it to the same server and extend the guard t
 | `jev-brake` | `PreToolUse`, matcher `Bash|Monitor`, exec-form node hook; deny-only | no (T1) | B |
 | `jev-webscreen` | `PostToolUse` on `WebFetch|WebSearch` plus seven `if` Bash handlers (`curl *`, `wget *`, `gh api *`, `gh issue view *`, `gh pr view *`, `gh repo view *`, `gh search *`); async in log phase | yes | C |
 | Jev gray-zone adjudicator (T2) | Inside `jev-brake`; three Noul questions | yes | D (only on evidence) |
-| `jev_triage` | Self-hosted stdio MCP, deferred, one tool | yes | D (trial) |
+| `jev_triage` | Self-hosted stdio MCP, one tool; always loaded since 2026-10-04 (was deferred), optional `jev-nudge` reminder hook | yes | D (trial) |
 | PermissionRequest allow-gate | `shelf/jev-gate.cjs`, not registered | yes | shelf (for the day you use default/acceptEdits/plan) |
 
 ### Where Jev fires during a turn
@@ -802,7 +802,7 @@ If the live call fails, `doctor` retries without provider preferences (works => 
 ```
 claude mcp add-json --scope user jev '{"command":"~/.nvm/current/bin/node","args":["~/.claude/hooks/jev/mcp/jev-mcp.cjs"],"timeout":60000}'
 ```
-No env block (the process reads the guarded `.env` itself), no `alwaysLoad`. Items go in state (8 per request, 8 requests in parallel, 6 s per request, 45 s total, $0.05 per call cap); buckets clear_no <= 0.05, clear_yes >= 0.95, else uncertain; order preserved; a spot-check of dropped items and a cost trailer; refuses outside `egress: full` roots. Add a real-client MCP handshake canary. Kill rule: fewer than 1 call per week by day 21 => `claude mcp remove jev --scope user`.
+No env block (the process reads the guarded `.env` itself). Originally no `alwaysLoad`; since the 2026-10-04 trial review the tool sets `_meta` `anthropic/alwaysLoad` itself (see the rejected-options table). Items go in state (8 per request, 8 requests in parallel, 6 s per request, 45 s total, $0.05 per call cap); buckets clear_no <= 0.05, clear_yes >= 0.95, else uncertain; order preserved; a spot-check of dropped items and a cost trailer; refuses outside `egress: full` roots. Add a real-client MCP handshake canary. Kill rule: fewer than 1 call per week by day 21 => `claude mcp remove jev --scope user`.
 
 **Step 15. Keep/kill review (day 30, 15 minutes).** Keep a component only if it produced a confirmed catch or measurable savings, or is free insurance without friction (skill, T1 core, guard patch). Delete T2, the tripwire or the MCP tool otherwise.
 
@@ -875,7 +875,7 @@ No env block (the process reads the guarded `.env` itself), no `alwaysLoad`. Ite
 | Agent-typable `JEV_ACK=1` override | The deny message named the exact bypass; an unattended agent would simply retype it. Replaced by: no override; the deny text names the human override (`!`). |
 | Key file `~/.config/jev/openrouter.key` | Not protected by your guard (Read, Grep, cat allowed). Replaced by dotenv-named `~/.config/jev/.env` plus the directory-pattern patch. |
 | Environment-overridable paths and binaries (`JEV_HOME`, `JEV_STATE`, `JEV_GIT`, `HOME` via `os.homedir()`) | A project's settings `env` block can set them for hook processes. Replaced by passwd home plus an argv-only test flag; git runs with a scrubbed env. |
-| `alwaysLoad` for the triage tool | Costs about 585 tokens every turn and a startup wait up to 5 s; tool search already loads names and server instructions. |
+| `alwaysLoad` for the triage tool | Costs about 585 tokens every turn and a startup wait up to 5 s; tool search already loads names and server instructions. **Reversed 2026-10-04:** in 24 hours of real work over 5 projects the deferred tool was never fetched with ToolSearch, so the tool now sets `_meta` `anthropic/alwaysLoad`, and an optional `jev-nudge` hook adds a reminder at listings and fan-outs of 30+ items. |
 | Dated model slug in the request | Acceptance of the dated slug as a request id is unverified; documented example uses `typesafe/jev-1.13`. Replaced by a family pin plus `expected_model` drift detection. |
 | `/api/alpha/decisions` as primary route | Same request schema on `/api/v1/systemone`, which OpenRouter does not tag alpha; alpha stays as a `doctor` fallback. |
 | Custom rewrite of the skill | More maintenance than the official file; the fit-check and "does not fit" list were grafted into the addendum instead. |

@@ -66,7 +66,10 @@ How Claude uses it: drop `clear_no` after the spot-check looks sane, read `uncer
 | File safety | `items_file` must be inside the project, not a dotfile or dot-directory, symlinks resolved; max 20 MB and 400 records |
 | Bounds | 8 items per request, 8 in parallel, 6 s per request, 45 s total, $0.05 per call; fails open with error counts |
 | Injection posture | Items go in `state` as data, never in instructions; output is advisory only |
-| Size | About 135 lines plus a 275-line shared lib, no dependencies |
+| Visibility | Always loaded (`_meta` `anthropic/alwaysLoad`): while deferred, Claude never fetched it in a 24-hour trial over 5 projects. Costs about 600 tokens of context |
+| Logging | Every call is logged, refusals included (reason and root class), so `report.cjs` can tell "refused" from "never called" |
+| Reminder hook | Optional `jev-nudge` hook: after a listing of 30+ items or before a fan-out over 30+ items, it reminds Claude of the tool. Static text, at most 3 per session, personal roots only, never calls Jev |
+| Size | About 140 lines plus a 280-line shared lib and a 94-line optional hook, no dependencies |
 
 Full comparison and the trial log: [research/JEV-MCP-PROS-CONS.md](research/JEV-MCP-PROS-CONS.md).
 
@@ -79,6 +82,7 @@ See [research/reference-build/install/QUICKSTART.md](research/reference-build/in
 3. Write `~/.config/jev/policy.json` with your own roots, and the key file.
 4. Register the server with `claude mcp add-json --scope user jev ...`.
 5. Verify with `doctor.cjs --live` and `claude mcp get jev`.
+6. Optional: add the reminder hook with `merge-settings.sh --snippet settings-snippet-nudge.json`.
 
 Requirements: Claude Code, Node.js (tested on 24), `jq`, an OpenRouter key with a low credit limit.
 
@@ -87,7 +91,7 @@ The full staged plan, including the optional Bash brake and web tripwire hooks, 
 ## Key findings
 
 - **Where Jev pays off:** when Claude writes application code that needs a fast, cheap, typed decision. Jev is newer than Claude's training data, so the vendored skill is what gets Claude to wire it correctly: pinned model, a none option, a 2 s timeout and a fallback.
-- **Inside Claude Code's own loop it adds little.** MCP tools are called at the model's discretion (one published benchmark saw 0 unprompted calls in 150), and permission auto-approvers do nothing in bypass mode.
+- **Inside Claude Code's own loop it adds little.** MCP tools are called at the model's discretion (one published benchmark saw 0 unprompted calls in 150), and permission auto-approvers do nothing in bypass mode. Our own trial matched: 0 calls in 24 hours over 5 projects. The tool was deferred and never fetched, 4 of the 5 projects sat outside a personal root, and none of the sessions had a 30+ item screen to run.
 - **Run one server, not several.** At most one self-hosted server with one tool, as a time-boxed trial. Most community servers add overlapping verbs, model-composed egress the secret guard can't inspect, and key-handling problems.
 - **Triage trial (2026-10-02):** on 103 model-router blurbs, Jev's confident calls were almost always right (96 of 96 in earlier runs, 17 of 18 in a later run), but 73-91% of items came back uncertain because the blurbs rarely state the answer outright. `items_file` cut a call from about 10k to about 300 tokens. For repeat questions, a labelled field in the data beat triage (3 turns and $0.23 vs 14 turns and $0.79).
 - **Most protection doesn't need Jev.** Deny rules, a deterministic Bash brake and a hardened secret guard cover the dangerous cases without a model.
@@ -96,11 +100,11 @@ The full staged plan, including the optional Bash brake and web tripwire hooks, 
 
 ```bash
 cd research/reference-build
-HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs   # 194 tests
+HOME=/nonexistent-home/x node --test test/classify.test.cjs test/e2e.test.cjs   # 208 tests
 (cd shelf && HOME=/nonexistent-home/x node --test jev-gate.test.cjs)            # 28 tests
 ```
 
-`HOME` must not be under `/tmp`, because the classifier treats `/tmp` as scratch space. The e2e suite uses a mock OpenRouter endpoint and covers an MCP handshake, `items_file` path guards, fail-open on timeouts and bad responses, the kill switch, key and policy permissions, env taint, model drift and egress by root class.
+`HOME` must not be under `/tmp`, because the classifier treats `/tmp` as scratch space. The e2e suite uses a mock OpenRouter endpoint and covers an MCP handshake, refusal logging, the reminder hook, `items_file` path guards, fail-open on timeouts and bad responses, the kill switch, key and policy permissions, env taint, model drift and egress by root class.
 
 ## Rebuilding the catalog
 

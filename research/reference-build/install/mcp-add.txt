@@ -1,5 +1,5 @@
 # Phase 6 only (jev_triage trial). Run in YOUR terminal. No env block: the server reads ~/.config/jev/.env itself, so nothing secret is written to ~/.claude.json.
-# Deferred by tool search (names + the 1152-char server instructions load at start, the schema loads on demand). Do NOT add alwaysLoad unless the trial shows the tool is never found.
+# Always loaded: the tool itself sets _meta "anthropic/alwaysLoad" (the 2026-10-04 trial review found the deferred tool was never fetched), so no alwaysLoad key is needed here.
 NODE="$(command -v node)"   # with nvm prefer a stable symlink such as ~/.nvm/current/bin/node
 claude mcp add-json --scope user jev "{\"command\":\"$NODE\",\"args\":[\"$HOME/.claude/hooks/jev/mcp/jev-mcp.cjs\"],\"timeout\":60000}"
 # optional, only matters outside bypass mode (auto/default): jq '.permissions.allow += ["mcp__jev__jev_triage"]' in ~/.claude/settings.json

@@ -15,7 +15,7 @@ const q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length
 const okCalls = rows.filter((r) => typeof r.ms === 'number' && r.model);
 const last = okCalls.length ? okCalls[okCalls.length - 1].ts : null;
 console.log(`rows=${rows.length} window=${days}d | last successful Jev call: ${last || 'NONE in window (hooks may be dead or the model/route was rejected: run doctor --live)'}`);
-const by = {}; for (const r of rows) { const k = `${r.c}/${r.tier || ''}/${r.decision || r.why || 'n/a'}`; by[k] = (by[k] || 0) + 1; }
+const by = {}; for (const r of rows) { const k = `${r.c}/${r.tier || ''}/${r.decision === 'refused' ? 'refused_' + r.why : r.decision || r.why || 'n/a'}`; by[k] = (by[k] || 0) + 1; }
 for (const [k, v] of Object.entries(by).sort()) console.log(String(v).padStart(6), k);
 const brake = rows.filter((r) => r.c === 'brake' && r.tier);
 if (brake.length) {

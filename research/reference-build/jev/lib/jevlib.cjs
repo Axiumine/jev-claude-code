@@ -38,6 +38,7 @@ const DEFAULTS = {
   },
   timeouts_ms: { brake: 2500, web: 4000, triage_req: 6000, triage_total: 45000, doctor: 8000 },
   budget_usd_day: 0.50,
+  nudge: { min_items: 30, max_per_session: 3, gap_s: 600 },   // jev-nudge hook: when to remind the model of jev_triage (advisory, sends nothing)
   breaker: { failures: 5, cooldown_s: 300 },
   allow_loopback_for_tests: false,
 };
@@ -64,6 +65,9 @@ function loadPolicy() {
   if (!Array.isArray(pol.env_allow)) pol.env_allow = [];
   if (!Array.isArray(pol.web_root_classes)) pol.web_root_classes = ['personal', 'unknown'];
   if (!Array.isArray(pol.web_trusted_hosts)) pol.web_trusted_hosts = [];
+  const nd = pol.nudge && typeof pol.nudge === 'object' ? pol.nudge : {};
+  const num = (v, d, lo, hi) => (typeof v === 'number' && v >= lo && v <= hi ? v : d);
+  pol.nudge = { min_items: num(nd.min_items, 30, 5, 400), max_per_session: num(nd.max_per_session, 3, 0, 50), gap_s: num(nd.gap_s, 600, 0, 86400) };
   if (!pol.allow_non_zdr) pol.provider = Object.assign({}, pol.provider, { data_collection: 'deny', zdr: true });   // privacy floor
   if (typeof pol.model !== 'string' || !/^[~\w./-]{3,80}$/.test(pol.model)) pol.model = DEFAULTS.model;
   return pol;

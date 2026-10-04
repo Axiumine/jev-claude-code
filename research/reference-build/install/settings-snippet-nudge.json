@@ -1,0 +1,21 @@
+{
+  "_comment": "Only the jev-nudge reminder hook. Install: merge-settings.sh --snippet settings-snippet-nudge.json (dry run), then add --apply.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Workflow|Agent",
+        "hooks": [
+          { "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/nudge.cjs"], "timeout": 3 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Grep|Glob|Bash",
+        "hooks": [
+          { "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/nudge.cjs"], "timeout": 3 }
+        ]
+      }
+    ]
+  }
+}

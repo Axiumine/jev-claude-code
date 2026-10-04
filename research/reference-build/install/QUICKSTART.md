@@ -1,6 +1,6 @@
 # Quick start: the jev_triage MCP server
 
-Installs the `jev_triage` MCP tool, the `typesafe-ai` skill and the deny rules that keep Claude away from your key. It does not install the Bash brake or the web tripwire hooks; for those, see `INSTALL.txt` and section 7 of `research/JEV-INTEGRATION-REPORT.md`.
+Installs the `jev_triage` MCP tool, the `typesafe-ai` skill and the deny rules that keep Claude away from your key, plus an optional reminder hook. It does not install the Bash brake or the web tripwire hooks; for those, see `INSTALL.txt` and section 7 of `research/JEV-INTEGRATION-REPORT.md`.
 
 Run every step in your own terminal, not through Claude. Nothing here needs Claude to touch `~/.claude`, `~/.config/jev` or the key.
 
@@ -85,7 +85,23 @@ Restart Claude Code, then:
 
 1. Ask Claude to "read ~/.config/jev/.env". It must be blocked.
 2. In a project under a `personal` root, ask Claude to screen a JSON file of 30+ records against one yes/no question. Expect a line like `jev_triage: judged=103 errors=0 | clear_no=2 uncertain=85 clear_yes=16 | ... 1.0s $0.00087`.
-3. The same request in an unlisted directory must be refused.
+3. The same request in an unlisted directory must be refused, and `node ~/.claude/hooks/jev/report.cjs 1` must show a `triage//refused_egress_off` row.
+
+## Optional: reminder hook
+
+The tool's schema is always loaded, but Claude still decides on its own whether to call it. In a 24-hour trial, server instructions and the CLAUDE.md bullet alone produced no calls. The `jev-nudge` hook adds a short reminder at the moments the tool fits:
+
+- after a Bash listing (`grep`, `rg`, `find`, `ls`, `git ls-files`/`grep`, `git log --oneline`, `gh ... list`, `gh search`, `jq -r`) or a Grep or Glob result with 30+ items;
+- before a Workflow or Agent call over 30+ items (a 30+ item array in the Workflow `args`, or a sentence such as "for each of the 120 files" in the script or prompt).
+
+It never blocks and never calls Jev. The reminder text is fixed, so no tool output gets into it. It stays silent outside personal roots, and fires at most 3 times per session, 10 minutes apart.
+
+```bash
+bash "$R/merge-settings.sh" --snippet "$R/settings-snippet-nudge.json"            # dry run: read the diff
+bash "$R/merge-settings.sh" --snippet "$R/settings-snippet-nudge.json" --apply    # writes a backup first
+```
+
+Tune it in `policy.json` with `"nudge": {"min_items": 30, "max_per_session": 3, "gap_s": 600}`, or turn it off with `"mode": {"nudge": "off"}`. Every reminder, and every one the cap held back, is a `nudge` row in the log.
 
 ## Secret guard caveat
 

@@ -6,6 +6,12 @@
         "hooks": [
           { "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/brake.cjs"], "timeout": 6 }
         ]
+      },
+      {
+        "matcher": "Workflow|Agent",
+        "hooks": [
+          { "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/nudge.cjs"], "timeout": 3 }
+        ]
       }
     ],
     "PostToolUse": [
@@ -25,6 +31,12 @@
           { "if": "Bash(gh pr view *)",    "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/webscreen.cjs"], "timeout": 8, "async": true },
           { "if": "Bash(gh repo view *)",  "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/webscreen.cjs"], "timeout": 8, "async": true },
           { "if": "Bash(gh search *)",     "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/webscreen.cjs"], "timeout": 8, "async": true }
+        ]
+      },
+      {
+        "matcher": "Grep|Glob|Bash",
+        "hooks": [
+          { "type": "command", "command": "__NODE__", "args": ["__HOME__/.claude/hooks/jev/hooks/nudge.cjs"], "timeout": 3 }
         ]
       }
     ]
