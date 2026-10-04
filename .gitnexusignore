@@ -1,0 +1,8 @@
+# GitNexus (code knowledge graph): what `gitnexus analyze` skips, on top of .gitignore.
+# Tests: the graph maps the code itself.
+tests/
+research/reference-build/test/
+*.test.cjs
+# Data and the page generated from it: not code.
+research/data/
+research/jev-in-claude-code.html

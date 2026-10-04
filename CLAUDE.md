@@ -6,6 +6,7 @@
 
 ## Python checks
 - Gate: `scripts/check.sh [step ...]`, always in the order qodana, ruff, mypy, pytest, semgrep, trivy, mutmut. One run at a time: mutmut rebuilds mutants/, Qodana rewrites .qodana/.
+- GitNexus: graph in .gitnexus/ (git-excluded), opt-in per clone with `gitnexus analyze --index-only --pdg`; .gitnexusignore keeps tests/ and test files, research/data/ and the generated page out. Hooks refresh it after commit/merge/rewrite/checkout and fail a push on import cycles.
 - Git hooks (pre-commit, `.pre-commit-config.yaml`): commit stage runs the fast checks and scripts/git_guard.py, push stage the whole gate. Never bypass them (`--no-verify`, SKIP=) unless the user asks.
 - Never put private links (claude.ai artifacts/chats/sessions, Qodana Cloud reports), env files or keys in tracked files or commit messages: the repo is public.
 - Required: 100% line and branch coverage, every mutmut mutant killed. `# pragma: no mutate` only on the utf-8 I/O lines (equivalent mutants); no `pragma: no cover`.

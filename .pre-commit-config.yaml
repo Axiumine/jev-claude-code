@@ -7,11 +7,12 @@
 # Commit stage: fast checks of what is staged (pre-commit stashes the rest meanwhile). Commit
 # message: the privacy guard. Push stage: the privacy guard on every pushed commit, then the whole
 # gate of scripts/check.sh, one hook per step in its order, on a clean checkout of the pushed
-# commit. After checkout and merge: uv sync keeps .venv on uv.lock.
+# commit. After checkout and merge: uv sync keeps .venv on uv.lock. GitNexus (opt-in per clone): the
+# code graph is refreshed after commit, merge, rewrite and branch checkout; push fails on import cycles.
 # The hooks call uv, uvx and docker (and the qodana CLI at push): they must be on the PATH of
 # whatever runs git. `git push --no-verify` skips the push stage; SKIP=gate-qodana skips one hook.
 minimum_pre_commit_version: 4.4.0 # language: unsupported (formerly system)
-default_install_hook_types: [pre-commit, commit-msg, pre-push, post-checkout, post-merge]
+default_install_hook_types: [pre-commit, commit-msg, pre-push, post-checkout, post-merge, post-commit, post-rewrite]
 default_stages: [pre-commit]
 exclude: ^mutants/
 
@@ -103,6 +104,14 @@ repos:
         always_run: true
         fail_fast: true
         stages: [pre-push]
+      - id: gitnexus-cycles
+        name: GitNexus (no circular imports; a no-op until the clone is indexed)
+        entry: uv run --locked python scripts/gitnexus_hook.py check --cycles
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        fail_fast: true
+        stages: [pre-push]
       - id: gate-qodana
         name: gate 1/7 Qodana (Docker, QODANA_TOKEN)
         entry: scripts/check.sh qodana
@@ -166,6 +175,15 @@ repos:
         require_serial: true
         fail_fast: true
         stages: [pre-push, manual]
+
+      # ---- GitNexus code graph: opt-in per clone, a no-op until `gitnexus analyze --index-only --pdg` ran once ----
+      - id: gitnexus-analyze
+        name: GitNexus (refresh the code graph)
+        entry: uv run --locked python scripts/gitnexus_hook.py analyze --index-only --pdg --no-stats
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        stages: [post-commit, post-merge, post-rewrite, post-checkout]
 
       # ---- after checkout and merge: keep .venv on uv.lock ----
       - id: uv-sync
